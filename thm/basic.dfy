@@ -25,4 +25,26 @@ module basic {
            i in store.intentions.intentions.Keys && Authorizer(request, store).satisfied(i)) ==>
            Authorizer(request, store).isAuthorized().decision == DenyRequest
       {}
+
+      lemma HigherPrecedenceAllowTrumpsLowerDeny(request: Request, store: Store)
+        requires // a higher max precedence allow policy exists
+          exists a ::
+            a in store.intentions.intentions.Keys &&
+            store.intentions.intentions[a].action == Allow &&
+            a in Authorizer(request, store).satisfiedMaxPrecedenceIntentions()
+        requires // a max precedence deny does not exist
+          !exists d ::
+            d in store.intentions.intentions.Keys &&
+            store.intentions.intentions[d].action == Deny &&
+            d in Authorizer(request, store).satisfiedMaxPrecedenceIntentions()
+        requires // a lower precedence deny exists
+          exists d ::
+            d in store.intentions.intentions.Keys &&
+            store.intentions.intentions[d].action == Deny &&
+            d !in Authorizer(request, store).satisfiedMaxPrecedenceIntentions()
+        ensures // the request is allowed
+          Authorizer(request, store).isAuthorized().decision == AllowRequest
+        {
+          var a :| a in Authorizer(request, store).allows();
+        }
 }

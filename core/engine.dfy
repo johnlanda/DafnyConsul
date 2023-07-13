@@ -29,7 +29,7 @@ module def.engine {
 
         function satisfiedMaxPrecedenceIntentions(): set<IntentionID> {
             set iid | iid in satisfiedIntentions() && 
-                forall x :: x in satisfiedIntentions() ==> store.intentions.intentions[x].precedence <= store.intentions.intentions[iid].precedence
+                forall x :: x in satisfiedIntentions() ==> Precedence(store.intentions.intentions[x]) <= Precedence(store.intentions.intentions[iid])
         }
 
         function allows(): set<IntentionID> {
@@ -46,11 +46,11 @@ module def.engine {
 
             // assert that we have only policies of one precedence
             // 1. all denies same precedence
-            assert forall x, y :: x in d && y in d ==> store.intentions.intentions[x].precedence == store.intentions.intentions[y].precedence;
+            assert forall x, y :: x in d && y in d ==> Precedence(store.intentions.intentions[x]) == Precedence(store.intentions.intentions[y]);
             // 2. all allows same precedence
-            assert forall x, y :: x in a && y in a ==> store.intentions.intentions[x].precedence == store.intentions.intentions[y].precedence;
+            assert forall x, y :: x in a && y in a ==> Precedence(store.intentions.intentions[x]) == Precedence(store.intentions.intentions[y]);
             // 3. denies and allows are same precedence
-            assert forall x, y :: x in a && y in d ==> store.intentions.intentions[x].precedence == store.intentions.intentions[y].precedence;
+            assert forall x, y :: x in a && y in d ==> Precedence(store.intentions.intentions[x]) == Precedence(store.intentions.intentions[y]);
 
             // if no denies at max precedence and some allows
             // then allow the request

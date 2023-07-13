@@ -85,13 +85,18 @@ module def.core {
     
     datatype IntentionID = IntentionID(id: string)
 
+    // flattened intention representation which
+    // maps the consul Intention model to 
+    // on dafny Intention per nested source.
+    //
+    // TODO: require scopes not built on empty string
     datatype Intention = Intention(
         action: Action,
         sourceScope: SourceScope,
         sourceNamespaceScope: SourceNamespaceScope,
         destinationScope: DestinationScope,
         destinationNamespaceScope: DestinationNamespaceScope,
-        precedence: int) 
+        precedence: int)
     {
         function toExpr(): Expr {
             Expr.And(
@@ -105,6 +110,52 @@ module def.core {
                 )
             )
         }
+    }
+
+    /*
+     * From: https://developer.hashicorp.com/consul/docs/connect/intentions#precedence-and-match-order
+     *
+     *  ----------------------------------------------------------------------------------------
+     * | Precedence | Source Namespace | Source Name | Destination Namespace | Destination Name |
+     *  ----------------------------------------------------------------------------------------
+     * | 9          | Exact            | Exact       | Exact                 | Exact            |
+     * | 8          | Exact            | *           | Exact                 | Exact            |
+     * | 7          | *                | *           | Exact                 | Exact            |
+     * | 6          | Exact            | Exact       | Exact                 | *                |
+     * | 5          | Exact            | *           | Exact                 | *                |
+     * | 4          | *                | *           | Exact                 | *                |
+     * | 3          | Exact            | Exact       | *                     | *                |
+     * | 2          | Exact            | *           | *                     | *                |
+     * | 1          | *                | *           | *                     | *                |
+     *  ----------------------------------------------------------------------------------------
+     */
+    function Precedence(i: Intention): int 
+      ensures 0 < Precedence(i) <= 9 
+    {
+        // I am sure there is a cleaner way to do this 
+        // but this clearly matches the table for now 
+        // so it is a good reference to show we actually 
+        // implement the docs.
+        if i.sourceNamespaceScope != SourceNamespaceScope(Scope.Any) && i.sourceScope != SourceScope(Scope.Any) &&
+            i.destinationNamespaceScope != DestinationNamespaceScope(Scope.Any) && i.destinationScope != DestinationScope(Scope.Any) then 9
+        else if i.sourceNamespaceScope != SourceNamespaceScope(Scope.Any) && i.sourceScope == SourceScope(Scope.Any) &&
+            i.destinationNamespaceScope != DestinationNamespaceScope(Scope.Any) && i.destinationScope != DestinationScope(Scope.Any) then 8
+        else if i.sourceNamespaceScope == SourceNamespaceScope(Scope.Any) && i.sourceScope == SourceScope(Scope.Any) &&
+            i.destinationNamespaceScope != DestinationNamespaceScope(Scope.Any) && i.destinationScope != DestinationScope(Scope.Any) then 7
+        else if i.sourceNamespaceScope != SourceNamespaceScope(Scope.Any) && i.sourceScope != SourceScope(Scope.Any) &&
+            i.destinationNamespaceScope != DestinationNamespaceScope(Scope.Any) && i.destinationScope == DestinationScope(Scope.Any) then 6
+        else if i.sourceNamespaceScope != SourceNamespaceScope(Scope.Any) && i.sourceScope == SourceScope(Scope.Any) &&
+            i.destinationNamespaceScope != DestinationNamespaceScope(Scope.Any) && i.destinationScope == DestinationScope(Scope.Any) then 5
+        else if i.sourceNamespaceScope == SourceNamespaceScope(Scope.Any) && i.sourceScope == SourceScope(Scope.Any) &&
+            i.destinationNamespaceScope != DestinationNamespaceScope(Scope.Any) && i.destinationScope == DestinationScope(Scope.Any) then 4
+        else if i.sourceNamespaceScope != SourceNamespaceScope(Scope.Any) && i.sourceScope != SourceScope(Scope.Any) &&
+            i.destinationNamespaceScope == DestinationNamespaceScope(Scope.Any) && i.destinationScope == DestinationScope(Scope.Any) then 3
+        else if i.sourceNamespaceScope != SourceNamespaceScope(Scope.Any) && i.sourceScope == SourceScope(Scope.Any) &&
+            i.destinationNamespaceScope == DestinationNamespaceScope(Scope.Any) && i.destinationScope == DestinationScope(Scope.Any) then 2
+        //else if i.sourceNamespaceScope == SourceNamespaceScope(Scope.Any) && i.sourceScope == SourceScope(Scope.Any) &&
+        //    i.destinationNamespaceScope == DestinationNamespaceScope(Source.Any) && i.destinationScope == DestinationScope(Scope.Any) then 1
+        else 1
+
     }
 
     datatype SourceScope = SourceScope(scope: Scope)
